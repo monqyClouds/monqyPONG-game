@@ -1,0 +1,14 @@
+{
+  "name": "monqy-pong-game",
+  "version": "1.0.0",
+  "description": "Simple Multiplayer Pong Game",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "monqyClouds",
+  "license": "ISC",
+  "dependencies": {
+    "socket.io": "^4.4.1"
+  }
+}
