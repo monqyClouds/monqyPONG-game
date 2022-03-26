@@ -1,7 +1,8 @@
 // Canvas Related 
 const canvas = document.createElement('canvas');
 const context = canvas.getContext('2d');
-const socket = io("http://localhost:3000");
+// const socket = io("http://localhost:3000");
+const socket = io();
 let paddleIndex = 0;
 
 let width = 500;
@@ -183,6 +184,7 @@ function animate() {
 function startGame() {
   createCanvas();
   renderIntro();
+  socket.emit("ready", )
   
   paddleIndex = 0;
   window.requestAnimationFrame(animate);

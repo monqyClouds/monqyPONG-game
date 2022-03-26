@@ -13,11 +13,15 @@ const io = new Server(httpServer, {
 	},
 });
 
+const PORT = 3000;
+const publicDirectoryPath = path.join(__dirname, "../public");
+
+app.use(express.static(publicDirectoryPath));
+
 app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "./index.html"))
+	res.sendFile(path.join(__dirname, "../public/index.html"));
 })
 
-const PORT = 3000;
 
 io.on("connection", (socket) => {
   console.log(`A user connected`);
