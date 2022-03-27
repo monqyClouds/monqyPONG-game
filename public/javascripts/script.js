@@ -1,12 +1,18 @@
 // Canvas Related
+const { body } = document;
 const canvas = document.createElement("canvas");
 const context = canvas.getContext("2d");
-const socket = io("/pong");
-let isReferee = false;
-let paddleIndex = 0;
-
 let width = 500;
 let height = 700;
+const screenWidth = window.screen.width;
+const canvasPosition = screenWidth / 2 - width / 2;
+const socket = io("/pong");
+let isReferee = false;
+let isOpponentReady = false;
+let paddleIndex = 0;
+
+const isMobile = window.matchMedia("(max-width: 600px)")
+const gameOverEl = document.createElement("div");
 
 // Paddle
 let paddleHeight = 10;
@@ -29,6 +35,9 @@ let speedX = 0;
 
 // Score for Both Players
 let score = [0, 0];
+const winningScore = 2;
+let isGameOver = true;
+let isNewGame = true;
 
 // Create Canvas Element
 function createCanvas() {
@@ -90,12 +99,12 @@ function renderCanvas() {
 function ballReset() {
 	ballX = width / 2;
 	ballY = height / 2;
-  speedY = 3;
-  
-  socket.emit("ballMove", {
+	speedY = 3;
+
+	socket.emit("ballMove", {
 		ballX,
-    ballY,
-    score,
+		ballY,
+		score,
 	});
 }
 
@@ -109,8 +118,8 @@ function ballMove() {
 	}
 	socket.emit("ballMove", {
 		ballX,
-    ballY,
-    score
+		ballY,
+		score,
 	});
 }
 
@@ -140,8 +149,8 @@ function ballBoundaries() {
 			speedX = trajectoryX[0] * 0.3;
 		} else {
 			// Reset Ball, add to Computer Score
-			ballReset();
 			score[1]++;
+			ballReset();
 		}
 	}
 	// Bounce off computer paddle (top)
@@ -159,8 +168,8 @@ function ballBoundaries() {
 			trajectoryX[1] = ballX - (paddleX[1] + paddleDiff);
 			speedX = trajectoryX[1] * 0.3;
 		} else {
-			ballReset();
 			score[0]++;
+			ballReset();
 		}
 	}
 }
@@ -181,14 +190,54 @@ function ballBoundaries() {
 //   }
 // }
 
+function showGameOverEl(winner) {
+	// Hide canvas
+	canvas.hidden = true;
+
+	// Container
+	gameOverEl.textContent = "";
+	gameOverEl.classList.add("game-over-container");
+
+	// Title
+	const title = document.createElement("h1");
+	title.textContent = `${winner} Wins!`;
+
+	// Button
+	const playAgainBtn = document.createElement("button");
+	playAgainBtn.textContent = "Play Again";
+	playAgainBtn.addEventListener("click", () => {
+		socket.emit("playAgain", true);
+		startGame()
+	});
+	
+	// Append
+	gameOverEl.append(title, playAgainBtn);
+	body.appendChild(gameOverEl);
+}
+
+function gameOver() {
+	if (score[0] === winningScore || score[1] === winningScore) {
+		isGameOver = true;
+		// Set winner
+		const winner = score[0] === winningScore ? "Player 1" : "Player 2";
+		isOpponentReady = false;
+
+		showGameOverEl(winner);
+	}
+}
+
 // Called Every Frame
 function animate() {
-  if (isReferee) {
-    ballMove();
-    ballBoundaries();
-  }
+	if (isReferee) {
+		ballMove();
+		ballBoundaries();
+	}
 	renderCanvas();
-	window.requestAnimationFrame(animate);
+	gameOver();
+
+	if (!isGameOver) {
+		window.requestAnimationFrame(animate);
+	}
 }
 
 // Start Game, Reset Everything
@@ -198,10 +247,32 @@ function loadGame() {
 	socket.emit("ready");
 }
 
+function resetScore() {
+	score = [0, 0];
+}
+
 function startGame() {
+	if (isGameOver && !isNewGame) {
+		gameOverEl.remove();
+		resetScore();
+		canvas.hidden = false;
+	}
+
+	if (!isOpponentReady) { 
+		renderIntro();
+		return;
+	}
+
+	isGameOver = false;
+	isNewGame = false;
 	paddleIndex = isReferee ? 0 : 1;
 	window.requestAnimationFrame(animate);
-	canvas.addEventListener("mousemove", (e) => {
+	canvas.addEventListener("mousemove", paddleControl);
+
+	canvas.addEventListener("touchmove", paddleControl)
+
+	function paddleControl(e) {
+		e.preventDefault();
 		playerMoved = true;
 		paddleX[paddleIndex] = e.offsetX;
 		if (paddleX[paddleIndex] < 0) {
@@ -215,7 +286,7 @@ function startGame() {
 		});
 		// Hide Cursor
 		canvas.style.cursor = "none";
-	});
+	}
 }
 
 // On Load
@@ -227,16 +298,20 @@ socket.on("connect", () => {
 
 socket.on("startGame", (refereeId) => {
 	console.log("Referee is ", refereeId);
-
+	isOpponentReady = true;
 	isReferee = socket.id === refereeId;
 	startGame();
 });
+
+// socket.on("restartGame", () => {
+// 	isOpponentReady = true;
+// })
 
 socket.on("paddleMove", (paddleData) => {
 	const opponentPaddleIndex = 1 - paddleIndex;
 	paddleX[opponentPaddleIndex] = paddleData.xPosition;
 });
 
-socket.on("ballMove", ballData => {
-  ({ballX, ballY, score} = ballData);
-})
+socket.on("ballMove", (ballData) => {
+	({ ballX, ballY, score } = ballData);
+});
