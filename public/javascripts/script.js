@@ -267,20 +267,27 @@ function startGame() {
 	isNewGame = false;
 	paddleIndex = isReferee ? 0 : 1;
 	window.requestAnimationFrame(animate);
-	canvas.addEventListener("mousemove", paddleControl);
+	canvas.addEventListener("mousemove", (e) => {
+		const xPosition = e.offsetX;
+		paddleControl(e, xPosition);
+	});
 
-	canvas.addEventListener("touchmove", paddleControl)
-
-	function paddleControl(e) {
+	canvas.addEventListener("touchmove", (e) => {
 		e.preventDefault();
-		playerMoved = true;
-		paddleX[paddleIndex] = e.offsetX;
+		const xPosition = e.touches[0].clientX;
+		paddleControl(e, xPosition);
+	});
+
+	function paddleControl(e, xPosition) {
+		paddleX[paddleIndex] = xPosition;
+
 		if (paddleX[paddleIndex] < 0) {
 			paddleX[paddleIndex] = 0;
 		}
 		if (paddleX[paddleIndex] > width - paddleWidth) {
 			paddleX[paddleIndex] = width - paddleWidth;
 		}
+
 		socket.emit("paddleMove", {
 			xPosition: paddleX[paddleIndex],
 		});
@@ -302,10 +309,6 @@ socket.on("startGame", (refereeId) => {
 	isReferee = socket.id === refereeId;
 	startGame();
 });
-
-// socket.on("restartGame", () => {
-// 	isOpponentReady = true;
-// })
 
 socket.on("paddleMove", (paddleData) => {
 	const opponentPaddleIndex = 1 - paddleIndex;
